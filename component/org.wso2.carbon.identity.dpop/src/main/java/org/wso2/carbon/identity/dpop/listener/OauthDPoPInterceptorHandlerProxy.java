@@ -181,8 +181,10 @@ public class OauthDPoPInterceptorHandlerProxy extends AbstractOAuthEventIntercep
         try {
             SignedJWT signedJwt = SignedJWT.parse(dPoPProof);
             JWSHeader header = signedJwt.getHeader();
+            String requestURL =
+                    tokReqMsgCtx.getOauth2AccessTokenReqDTO().getHttpServletRequestWrapper().getRequestURL().toString();
             validateDPoPHeader(header);
-            dPoPPayloadCheck(signedJwt.getJWTClaimsSet(), new Timestamp(new Date().getTime()), isFreshRequest);
+            dPoPPayloadCheck(signedJwt.getJWTClaimsSet(), new Timestamp(new Date().getTime()), isFreshRequest, requestURL);
             return isValidSignature(signedJwt, tokReqMsgCtx);
 
         } catch (ParseException e) {
@@ -194,7 +196,7 @@ public class OauthDPoPInterceptorHandlerProxy extends AbstractOAuthEventIntercep
 
     private boolean isValidSignature(SignedJWT signedJwt, OAuthTokenReqMessageContext tokReqMsgCtx)
             throws ParseException, JOSEException {
-        JWK parseJwk = JWK.parse(signedJwt.getHeader().toString());
+        JWK parseJwk = JWK.parse(signedJwt.getHeader().getJWK().toString());
         TokenBinding tokenBinding = new TokenBinding();
         tokenBinding.setBindingType(DPoPConstants.DPOP_TOKEN_TYPE);
         boolean validSignature = false;
@@ -243,7 +245,8 @@ public class OauthDPoPInterceptorHandlerProxy extends AbstractOAuthEventIntercep
         return signedJwt.verify(jwsVerifier);
     }
 
-    private void dPoPPayloadCheck(JWTClaimsSet jwtClaimsSet, Timestamp currentTimestamp, boolean isRefreshRequest)
+    private void dPoPPayloadCheck(JWTClaimsSet jwtClaimsSet, Timestamp currentTimestamp, boolean isRefreshRequest,
+                                  String requestURL)
             throws IdentityOAuth2Exception {
         if (jwtClaimsSet == null) {
             throw new IdentityOAuth2Exception("DPoP proof payload is invalid");
@@ -256,7 +259,12 @@ public class OauthDPoPInterceptorHandlerProxy extends AbstractOAuthEventIntercep
             }
 
             // TODO: Validate htu
-            if (jwtClaimsSet.getClaim(DPoPConstants.DPOP_HTTP_URI) == null) {
+
+
+
+            Object htuClaim = jwtClaimsSet.getClaim(DPoPConstants.DPOP_HTTP_URI);
+
+            if (htuClaim == null || !StringUtils.equalsIgnoreCase(String.valueOf(htuClaim), requestURL)) {
                 throw new IdentityOAuth2Exception(DPoPConstants.INVALID_DPOP_ERROR);
             }
 

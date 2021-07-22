@@ -102,6 +102,7 @@
                             org.wso2.carbon.identity.dpop.util.*;
                             version="${project.version}"
                         </Export-Package>
+                        <DynamicImport-Package>*</DynamicImport-Package>
                     </instructions>
                 </configuration>
             </plugin>
